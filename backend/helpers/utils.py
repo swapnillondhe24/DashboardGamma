@@ -21,4 +21,4 @@ def saveBrokerInfo(key,secret):
     # pass
     # update the .env file with the new key and secret
 
-    return "Broker Info Saved Successfully"
+    return True

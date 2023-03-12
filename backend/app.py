@@ -18,13 +18,13 @@ cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['CORS_HEADERS'] = 'Content-Type'
 
-from helpers.utils import getApi, saveBrokerInfo
+from helpers.utils import getApi
 
-api = getApi()
+alpaca_api = getApi()
 
 class listAssets(Resource):
     def listAssets(self):
-        return api.list_asset()
+        return alpaca_api.list_asset()
     
     def post(self):
         try:
@@ -38,7 +38,7 @@ class listAssets(Resource):
         
 class getAssets(Resource):
     def getAssets(self,sym):
-        return api.get_asset(sym)
+        return alpaca_api.get_asset(sym)
     
     def post(self):
         try:
