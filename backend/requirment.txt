@@ -1,6 +1,6 @@
 alpaca-backtrader-api==0.14.0
 alpaca-trade-api==1.2.2
-altgraph @ file:///System/Volumes/Data/SWE/Apps/DT/BuildRoots/BuildRoot2/ActiveBuildRoot/Library/Caches/com.apple.xbs/Sources/python3/python3-124/altgraph-0.17.2-py2.py3-none-any.whl
+altgraph 
 aniso8601==9.0.1
 appdirs==1.4.4
 backtrader==1.9.76.123
@@ -15,7 +15,7 @@ Flask==2.2.3
 Flask-Cors==3.0.10
 Flask-RESTful==0.3.9
 frozendict==2.3.5
-future @ file:///System/Volumes/Data/SWE/Apps/DT/BuildRoots/BuildRoot2/ActiveBuildRoot/Library/Caches/com.apple.xbs/Sources/python3/python3-124/future-0.18.2-py3-none-any.whl
+future 
 html5lib==1.1
 idna==3.4
 importlib-metadata==6.0.0
@@ -23,7 +23,7 @@ itsdangerous==2.1.2
 Jinja2==3.1.2
 korean-lunar-calendar==0.3.1
 lxml==4.9.2
-macholib @ file:///System/Volumes/Data/SWE/Apps/DT/BuildRoots/BuildRoot2/ActiveBuildRoot/Library/Caches/com.apple.xbs/Sources/python3/python3-124/macholib-1.15.2-py2.py3-none-any.whl
+macholib 
 MarkupSafe==2.1.2
 msgpack==1.0.2
 multitasking==0.0.11
@@ -35,7 +35,7 @@ python-dateutil==2.8.2
 python-dotenv==1.0.0
 pytz==2022.7.1
 requests==2.28.2
-six @ file:///System/Volumes/Data/SWE/Apps/DT/BuildRoots/BuildRoot2/ActiveBuildRoot/Library/Caches/com.apple.xbs/Sources/python3/python3-124/six-1.15.0-py2.py3-none-any.whl
+six 
 soupsieve==2.4
 toolz==0.12.0
 trading-calendars==2.1.1
