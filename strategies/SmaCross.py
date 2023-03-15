@@ -7,6 +7,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 import alpaca_trade_api as tradeapi
 import os
+from backend.helpers.utils import write_to_log
 
 
 
@@ -31,7 +32,7 @@ You have 3 options:
 """
 IS_BACKTEST = False
 IS_LIVE = False
-symbol = "GOOG"
+symbol = "GOOGL"
 
 
 class SmaCross(bt.Strategy):
@@ -60,7 +61,7 @@ class SmaCross(bt.Strategy):
         # print('%s, %s' % (dt.isoformat(), txt))
 
     def notify_trade(self, trade):
-        self.log("placing trade for {}. target size: {}".format(
+        write_to_log("placing trade for {}. target size: {}".format(
             trade.getdataname(),
             trade.size))
 
@@ -92,14 +93,24 @@ class SmaCross(bt.Strategy):
         # in the market & cross to the downside
         if self.positionsbyname[symbol].size and self.crossover0 <= 0:
             self.close(data=data0)  # close long position
-
-
+"""
 if __name__ == '__main__':
     import logging
     logging.basicConfig(format='%(asctime)s %(message)s', level=logging.WARNING)
 
     cerebro = bt.Cerebro()
     cerebro.addstrategy(SmaCross)
+
+    
+    
+    store = alpaca_backtrader_api.AlpacaStore(
+        key_id=ALPACA_API_KEY,
+        secret_key=ALPACA_SECRET_KEY,
+        paper=not IS_LIVE,
+    )
+
+    broker = store.getbroker()
+    cerebro.setbroker(broker)
 
     store = alpaca_backtrader_api.AlpacaStore(
         key_id=ALPACA_API_KEY,
@@ -134,3 +145,4 @@ if __name__ == '__main__':
     print('Starting Portfolio Value: {}'.format(cerebro.broker.getvalue()))
     
     cerebro.run()
+    """

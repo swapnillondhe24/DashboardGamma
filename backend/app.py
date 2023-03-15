@@ -9,7 +9,7 @@ from flask import request,Response
 from flask_cors import CORS
 
 from helpers.utils import saveBrokerInfo as sbi
-from helpers.utils import datadownload,get_file_names
+from helpers.utils import datadownload,get_file_names, backtest
 
 api = ''
 app = Flask(__name__)
@@ -127,8 +127,30 @@ class getNames(Resource):
 
 
 # TODO: Add a function to return stratey code accodring to strategy name
+
 # TODO: BackTesting
+class runBacktesting(Resource):
+    
+    def runBacktesting(self,strategy,data,symbol,fromdate,todate,cash):
+        return backtest(strategy,data,symbol,fromdate,todate,cash)
+    
+    def post(self):
+        try:
+            request_json = request.get_json()
+            strategy = request_json['strategy']
+            data = request_json['data']
+            symbol = request_json['symbol']
+            fromdate = request_json['fromdate']
+            todate = request_json['todate']
+            cash = request_json['cash']
+
+            return Response(self.runBacktesting(strategy,data,symbol,fromdate,todate,cash))
+
+        except Exception as error:
+            print(error)
+
 # TODO: LiveTrading
+
 
 # if __name__ == "__main__":
 #     app.run(debug=True)
