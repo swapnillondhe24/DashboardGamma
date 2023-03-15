@@ -27,9 +27,11 @@ class listAssets(Resource):
     def listAssets(self):
         # return alpaca_api.list_assets()
         active_assets = alpaca_api.list_assets(status='active')
-        names = [a.symbol for a in active_assets]
+        names = [a.exchange for a in active_assets]
+        # print(active_assets)
 
-        return json.dumps(names)
+
+        return json.dumps(names, indent=4)
 
     
     def post(self):
@@ -105,6 +107,11 @@ class DownloadData(Resource):
             print(error)
 
 
+
+
+
+
+
 # TODO: Add a function to populate strategy list 10-3
 class getNames(Resource):
     
@@ -135,5 +142,5 @@ api.add_resource(getNames, '/getnames/')
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5006)
-    app.run(debug=False)
+    app.run(host='127.0.0.1', port=5006)
+    # app.run(debug=False)

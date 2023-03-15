@@ -1,8 +1,12 @@
+from datetime import datetime
 import json
 import os
-
+import backtrader as bt
 import alpaca_trade_api as tradeapi
 from dotenv import load_dotenv
+import pandas as pd
+import yfinance as yf
+# from strategies.SmaCross import SmaCross
 
 
 def getApi():
@@ -40,8 +44,8 @@ def saveBrokerInfo(key,secret):
         return json.dumps({'status': 'error'})
 
 
-def datadownload(symbols,start_date,end_date,timeframe):
-    import yfinance as yf
+def datadownload(symbols,start_date,end_date,timeframe="1D"):
+    
     try:    
         if not os.path.exists('../data'):
             os.makedirs('../data')
@@ -51,16 +55,108 @@ def datadownload(symbols,start_date,end_date,timeframe):
             data.to_csv(f'../data/{symbol}.csv')
         
         return json.dumps({'status': 'success',"filedir":"../data/"})
+    
     except Exception as error:
         return json.dumps({'status': 'error',"error_det": str(error)})
 
 
 
-
-
-def get_file_names(directory_path="../strategies"):
+def get_file_names(directory_path="../../strategies"):
     if not os.path.exists(directory_path):
         os.makedirs(directory_path)
         return []
     else:
         return [os.path.splitext(f)[0] for f in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, f))]
+
+
+def getData(symbol,start_date,end_date="datetime.now().strftime('%Y-%m-%d')",timeframe="1D"):
+    data = yf.download(symbol, start=start_date, end=end_date,interval=timeframe)
+    return data
+
+
+
+
+
+def backtest(strategy, data="", symbol="",fromdate="", todate="", cash=10000):
+
+    import importlib
+
+    # The module name is two levels up
+    module_name = "strategies.SmaCross"
+
+    # Get the module object dynamically
+    module = importlib.import_module(module_name, package=__package__)
+
+    # Get the class object by name
+    class_name = "SmaCross"
+    strategy_class = getattr(module, class_name)
+
+    
+    if todate=="":
+        todate = datetime.now().strftime("%Y-%m-%d")
+    
+    if data == "":
+        data = getData(symbol,fromdate,todate)
+    
+    if data.empty and fromdate=="":
+        fromdate = pd.to_datetime(data.index[0]).strftime('%Y-%m-%d') 
+
+    if data.empty  and todate=="":
+        todate = pd.to_datetime(data.index[-1]).strftime('%Y-%m-%d')
+
+    feed = bt.feeds.PandasData(dataname=data)
+
+    # print(strategy)
+    # exit(0)
+    print(feed)
+    cerebro = bt.Cerebro()
+    cerebro.addstrategy(strategy_class)
+    cerebro.adddata(feed)
+    cerebro.broker.set_cash(cash)
+    cerebro.broker.setcommission(commission=0.001)
+    cerebro.addsizer(bt.sizers.PercentSizer, percents=90)
+
+    cerebro.addanalyzer(bt.analyzers.PyFolio, _name='pyfolio')
+    cerebro.addanalyzer(bt.analyzers.TradeAnalyzer)
+    cerebro.addanalyzer(bt.analyzers.DrawDown)
+
+    cerebro.addwriter(bt.WriterFile, csv=True, out='results.csv')
+
+    strats = cerebro.run()
+    print("******Reached Here***********")
+
+    # bar_data_res = .analyzers.getbyname('pyfolio')
+    # df = pd.DataFrame(bar_data_res)
+    # print(df)
+    
+
+
+    pyfoliozer = strats[0].analyzers.getbyname('pyfolio')
+    tradeanalyzer = strats[0].analyzers.getbyname('tradeanalyzer')
+    drawdown = strats[0].analyzers.getbyname('drawdown')
+
+    returns, positions, transactions, gross_lev = pyfoliozer.get_pf_items()
+
+
+    results = {
+        
+        'returns': returns.tolist(),
+        'positions': positions,
+        'transactions': transactions,
+        'gross_lev': gross_lev.tolist(),
+        'trade_analysis': tradeanalyzer.get_analysis().to_dict(),
+        'drawdown': drawdown.get_analysis().to_dict()
+    }
+
+    print(results)
+
+    # logs = cerebro.runstr()
+    results_json = json.dumps(results)
+    # logs_json = json.dumps(logs)
+
+    return (results)
+
+
+if __name__=="__main__":
+    print(backtest("SmaCross",symbol="AAPL",fromdate="2020-01-01"))
+    # print(get_file_names())
