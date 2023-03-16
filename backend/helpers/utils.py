@@ -150,13 +150,14 @@ def parse_date(date_str):
     return datetime.strptime(date_str, '%Y-%m-%d')
 
 
-def backtest(strategy, data="", symbol="",fromdate="", todate=0, cash=10000):
+def backtest(strategy, data=0, symbol="",fromdate="", todate=0, cash=10000):
 
     alpaca_api = getApi()
     load_dotenv()
     
     fromdate=parse_date(fromdate)
-    # print(fromdate)
+    
+
     if not todate:
         todate = datetime.now() - timedelta(minutes=20)
     else:
@@ -193,12 +194,15 @@ def backtest(strategy, data="", symbol="",fromdate="", todate=0, cash=10000):
     
 
     DataFactory = store.getdata  
-    data0 = DataFactory(dataname=symbol,
+    if not data:    
+        data0 = DataFactory(dataname=symbol,
                             historical=True,
                             fromdate=fromdate,
                             todate=todate,
                             timeframe=bt.TimeFrame.Days,
                             data_feed='iex')
+    else:
+        data0 = data
         
     broker = store.getbroker()
 
