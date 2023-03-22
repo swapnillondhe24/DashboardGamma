@@ -20,6 +20,16 @@ def getApi():
     
     return api
 
+
+def getKey():
+    load_dotenv()
+    return os.getenv('API_KEY_ID')
+
+def getSecret():
+    load_dotenv()
+    return os.getenv('SECRET_ACCESS_KEY')
+
+
 def getBrokerInfo():
     load_dotenv()
     return os.getenv('BROKER_API_KEY_ID'), os.getenv('BROKER_SECRET_ACCESS_KEY')
@@ -77,66 +87,17 @@ def getData(symbol,start_date,end_date="datetime.now().strftime('%Y-%m-%d')",tim
 import pandas as pd
 
 def analyze(strats):
-    # Calculate the returns and drawdowns for each strategy
-    returns = []
-    trades = []
-    pyfolio = []
-    Sqn = []
-
-    for strat in strats:
-        analyzer = strat.analyzers.getbyname('returns')
-        returns.append(analyzer.get_analysis())
-        analyzer = strat.analyzers.getbyname('trades')
-        trades.append(analyzer.get_analysis())
-        analyzer = strat.analyzers.getbyname('pyfolio')
-        pyfolio.append(analyzer.get_analysis())
-        analyzer = strat.analyzers.getbyname('SQN')
-        Sqn.append(analyzer.get_analysis())
-
-        analyzer = strat.analyzers.getbyname('pandas_writer')
-
-        df = strat.analyzers.get_analysis()
-
-        print(df)
-
     
-    # total_returns = pd.DataFrame(returns).sum(axis=1)
+    strat_return = strat.analyzers.getbyname("return").get_analysis()
+    strat_return = list(strat_return.items())
+    idx, values = zip(*strat_return)
+    strat_return = pd.Series(values, idx)
 
+    qs.reports.full(strat_return)
 
-    exit(0)
-    """
-    print("returns ",total_returns)
-    print("trades",trades)
-    print("Pyfolio",pyfolio)
-    print("Sqn",Sqn)
+    pass
 
-    # for strat in strats:
-    #     print(dir(strat.analyzers))
-    #     print(dir(strat.analyzers.trades))
-    #     print(strat.analyzers.trades.rets)
-
-    exit(0)
-    # Calculate the other metrics
-
-    num_trades = sum([strat.analyzers.num_trades.total for strat in strats])
-    win_rate = sum([strat.analyzers.won.total for strat in strats]) / num_trades
-    avg_win = sum([strat.analyzers.win.total for strat in strats]) / sum([strat.analyzers.won.total for strat in strats])
-    avg_loss = sum([strat.analyzers.loss.total for strat in strats]) / sum([strat.analyzers.lost.total for strat in strats])
-    # max_drawdown = total_drawdowns.min()
-    sharpe_ratio = bt.analyzers.SharpeRatio().get_analysis()['sharperatio']
-    """
-    # Create and return the analysis dictionaryw
-    analysis = {
-        'total_returns': total_returns,
-
-        'num_trades': num_trades,
-        'win_rate': win_rate,
-        'avg_win': avg_win,
-        'avg_loss': avg_loss,
-        # 'max_drawdown': max_drawdown,
-        'sharpe_ratio': sharpe_ratio
-    }
-    return analysis
+#TODO def getdata from file and display code
 
 
 def write_to_log(msg):
@@ -187,22 +148,26 @@ def backtest(strategy, data=0, symbol="",fromdate="", todate=0, cash=10000):
 
     # Setup Store
     store = alpaca_backtrader_api.AlpacaStore(
-        key_id=os.getenv('API_KEY_ID'),
-        secret_key=os.getenv('SECRET_ACCESS_KEY'),
+        key_id= getKey(),
+        secret_key=getSecret(),
         paper= True
     )
     
 
+    if data:
+        data0 = alpaca_backtrader_api.AlpacaCSVData(dataname='./data/'+data+".csv")
+
+
     DataFactory = store.getdata  
-    if not data:    
+    if symbol:    
         data0 = DataFactory(dataname=symbol,
                             historical=True,
                             fromdate=fromdate,
                             todate=todate,
                             timeframe=bt.TimeFrame.Days,
                             data_feed='iex')
-    else:
-        data0 = data
+        print(data0)
+    
         
     broker = store.getbroker()
 
@@ -210,13 +175,9 @@ def backtest(strategy, data=0, symbol="",fromdate="", todate=0, cash=10000):
     cerebro.adddata(data0)
     
     cerebro.addstrategy(strategy_class)
-    from backtrader.analyzers import PandasWriter
+  
     #add Analyzers
-    cerebro.addanalyzer(bt.analyzers.PyFolio, _name='pyfolio')
-    cerebro.addanalyzer(bt.analyzers.DrawDown, _name='drawdown')
-    cerebro.addanalyzer(bt.analyzers.SQN, _name='SQN')
-    cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name='trades')
-    cerebro.addanalyzer(bt.analyzers.Returns, _name='returns')
+    
 
     
     
@@ -229,8 +190,15 @@ def backtest(strategy, data=0, symbol="",fromdate="", todate=0, cash=10000):
     print('Starting Portfolio Value: {}'.format(cerebro.broker.getvalue()))
     strats = cerebro.run()
 
+    cerebro.addanalyzer(bt.analyzers.Returns, _name='returns')
+    strat_return = strats[0].analyzers.getbyname("return").get_analysis()
+    strat_return = list(strat_return.items())
+    idx, values = zip(*strat_return)
+    strat_return = pd.Series(values, idx)
 
-    # return analyze(strats)
+    qs.reports.full(strat_return)
+
+
     pnl = cerebro.broker.getvalue() - initial_cash
     print('Final Portfolio Value: {}'.format(cerebro.broker.getvalue()))
     
@@ -248,12 +216,18 @@ O/P
 
 
 """
+#TODO def live trading
+
+def live_trading():
+    pass
+
+
 
 
 
 if __name__=="__main__":
     
-    res = backtest("SmaCross",symbol="GOOGL",fromdate="2020-09-21",todate="2020-10-21")
+    res = backtest("SmaCross",data="GOOGL",fromdate="2020-09-21",todate="2020-10-21")
     print("****************************************************************")
     print(res)
     # print(get_file_names())

@@ -149,7 +149,28 @@ class runBacktesting(Resource):
         except Exception as error:
             print(error)
 
-# TODO: LiveTrading
+
+
+class runLiveTrading(Resource):
+    
+    def runLiveTrading(self,strategy,symbol):
+        return backtest(strategy,symbol)
+    
+    def post(self):
+        try:
+            request_json = request.get_json()
+            strategy = request_json['strategy']
+            data = request_json['data']
+            symbol = request_json['symbol']
+
+            return Response(self.runBacktesting(strategy,symbol))
+
+        except Exception as error:
+            print(error)
+
+
+class GenrateCode(Resource):
+    pass
 
 
 # if __name__ == "__main__":
@@ -161,6 +182,9 @@ api.add_resource(getAssets, '/getassets/')
 api.add_resource(saveBrokerInfo, '/savebrokerinfo/')
 api.add_resource(DownloadData, '/downloaddata/')
 api.add_resource(getNames, '/getnames/')
+api.add_resource(runBacktesting, '/runbacktesting/')
+api.add_resource(runLiveTrading, '/runlivetrading/')
+api.add_resource(GenrateCode, '/generatecode/')
 
 
 if __name__ == '__main__':
