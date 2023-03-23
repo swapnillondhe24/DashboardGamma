@@ -3,13 +3,18 @@ import re
 import os
 import json
 from datetime import datetime
-from flask import Flask, jsonify
+from flask import Flask, jsonify,send_file
 from flask_restful import Resource, Api
 from flask import request,Response
 from flask_cors import CORS
-
-from helpers.utils import saveBrokerInfo as sbi
-from helpers.utils import datadownload,get_file_names, backtest
+try:
+    from backend.helpers.utils import saveBrokerInfo as sbi
+    from backend.helpers.utils import datadownload,get_file_names, backtest
+    from backend.helpers.utils import getApi
+except:
+    from helpers.utils import saveBrokerInfo as sbi
+    from helpers.utils import datadownload,get_file_names, backtest
+    from helpers.utils import getApi,Generatecode
 
 api = ''
 app = Flask(__name__)
@@ -19,25 +24,47 @@ cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['CORS_HEADERS'] = 'Content-Type'
 
-from helpers.utils import getApi
 
 alpaca_api = getApi()
 
-class listAssets(Resource):
-    def listAssets(self):
+class listExchanges(Resource):
+    def listExchanges(self):
         # return alpaca_api.list_assets()
         active_assets = alpaca_api.list_assets(status='active')
-        names = [a.exchange for a in active_assets]
+        names = {a.exchange for a in active_assets}
         # print(active_assets)
+        
 
 
-        return json.dumps(names, indent=4)
+        return json.dumps({"exchanges":list(names)}, indent=4)
 
     
     def post(self):
         try:
             # request_json = request.get_json()
-            return Response(self.listAssets())
+            return Response(self.listExchanges())
+            # return Response(request_json)
+        except Exception as error:
+            print(error)
+
+
+class listAssets(Resource):
+    def listAssets(self,exchange):
+        # return alpaca_api.list_assets()
+        active_assets = alpaca_api.list_assets(status='active')
+        names = {a.symbol for a in active_assets if a.exchange == exchange}
+        # print(active_assets)
+        
+
+
+        return json.dumps({"assets":list(names)}, indent=4)
+
+    
+    def post(self):
+        try:
+            request_json = request.get_json()
+            exchange = request_json['exchange']
+            return Response(self.listAssets(exchange))
             # return Response(request_json)
         except Exception as error:
             print(error)
@@ -51,10 +78,7 @@ class getAssets(Resource):
     def post(self):
         try:
             request_json = request.get_json()
-            if request_json['symbol']:
-                return Response(self.getAssets(request_json['symbol']))
-            else:
-                return Response(self.getAssets())
+            return Response(self.getAssets(request_json['symbol']))
             # return Response(request_json)
         except Exception as error:
             print(error)
@@ -116,7 +140,7 @@ class DownloadData(Resource):
 class getNames(Resource):
     
     def getNames(self):
-        return get_file_names()
+        return json.dumps(get_file_names())
     
     def post(self):
         try:
@@ -126,25 +150,26 @@ class getNames(Resource):
             print(error)
 
 
-# TODO: Add a function to return stratey code accodring to strategy name
 
 # TODO: BackTesting
 class runBacktesting(Resource):
     
-    def runBacktesting(self,strategy,data,symbol,fromdate,todate,cash):
-        return backtest(strategy,data,symbol,fromdate,todate,cash)
+    def runBacktesting(self,strategy,symbols,fromdate,todate,cash):
+        backtest(strategy,symbols,fromdate,todate,cash)
+        return send_file('../quantstats-tearsheet.html')
     
     def post(self):
         try:
             request_json = request.get_json()
             strategy = request_json['strategy']
-            data = request_json['data']
-            symbol = request_json['symbol']
+            symbols = request_json['symbol']
             fromdate = request_json['fromdate']
-            todate = request_json['todate']
-            cash = request_json['cash']
+            if request_json['todate']:
+                todate = request_json['todate']
+            if request_json['cash']:
+                cash = request_json['cash']
 
-            return Response(self.runBacktesting(strategy,data,symbol,fromdate,todate,cash))
+            return Response(self.runBacktesting(strategy,symbols,fromdate,todate,cash))
 
         except Exception as error:
             print(error)
@@ -154,7 +179,7 @@ class runBacktesting(Resource):
 class runLiveTrading(Resource):
     
     def runLiveTrading(self,strategy,symbol):
-        return backtest(strategy,symbol)
+        backtest(strategy,symbol)
     
     def post(self):
         try:
@@ -170,21 +195,36 @@ class runLiveTrading(Resource):
 
 
 class GenrateCode(Resource):
-    pass
+    def GenrateCode(self,strategy,symbol):
+        return Generatecode(strategy,symbol)
+    
+    def post(self):
+        try:
+            request_json = request.get_json()
+            strategy = request_json['strategy']
+            symbol = request_json['symbol']
+
+            return Response(self.GenrateCode(strategy,symbol))
+
+        except Exception as error:
+            print(error)
 
 
 # if __name__ == "__main__":
 #     app.run(debug=True)
 
 
+api.add_resource(listExchanges, '/listexchanges/')
 api.add_resource(listAssets, '/listassets/')
+
 api.add_resource(getAssets, '/getassets/')
+
 api.add_resource(saveBrokerInfo, '/savebrokerinfo/')
 api.add_resource(DownloadData, '/downloaddata/')
 api.add_resource(getNames, '/getnames/')
+api.add_resource(GenrateCode, '/generatecode/')
 api.add_resource(runBacktesting, '/runbacktesting/')
 api.add_resource(runLiveTrading, '/runlivetrading/')
-api.add_resource(GenrateCode, '/generatecode/')
 
 
 if __name__ == '__main__':

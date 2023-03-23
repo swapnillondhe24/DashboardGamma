@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 import pandas as pd
 import yfinance as yf
 import alpaca_backtrader_api
+import json
+import quantstats as qs
 # from strategies.SmaCross import SmaCross
 
 
@@ -72,12 +74,14 @@ def datadownload(symbols,start_date,end_date,timeframe="1D"):
 
 
 
-def get_file_names(directory_path="../../strategies"):
+def get_file_names(directory_path="../strategies"):
     if not os.path.exists(directory_path):
         os.makedirs(directory_path)
         return []
     else:
-        return [os.path.splitext(f)[0] for f in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, f))]
+        ret_lst = [os.path.splitext(f)[0] for f in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, f))]
+        ret_lst.remove("__init__")
+        return ret_lst
 
 
 def getData(symbol,start_date,end_date="datetime.now().strftime('%Y-%m-%d')",timeframe="1D"):
@@ -86,18 +90,36 @@ def getData(symbol,start_date,end_date="datetime.now().strftime('%Y-%m-%d')",tim
 
 import pandas as pd
 
-def analyze(strats):
-    
-    strat_return = strat.analyzers.getbyname("return").get_analysis()
-    strat_return = list(strat_return.items())
-    idx, values = zip(*strat_return)
-    strat_return = pd.Series(values, idx)
 
-    qs.reports.full(strat_return)
-
-    pass
 
 #TODO def getdata from file and display code
+
+
+import json
+
+def Generatecode(filename,symbol):
+    filename = "../../strategies/"+filename
+    k,s = getBrokerInfo()
+    alpaca_key = "ALPACA_KEY = "+k
+    alpaca_secret = "ALPACA_SECRET = "+s
+    symbol = "SYMBOL = "+symbol
+    strategy = "STRATEGY = "+filename
+    print("been here")
+
+    try:
+        with open(filename + ".py", 'r') as file:
+            file_contents = file.read()
+            # Replace specific parameters inside the file with new values
+            file_contents = file_contents.replace("ALPACA_KEY", alpaca_key)
+            file_contents = file_contents.replace("ALPACA_SECRET", alpaca_secret)
+            file_contents = file_contents.replace("SYMBOL", symbol)
+            file_contents = file_contents.replace("STRATEGY", strategy)
+            # Return updated file contents as a JSON string
+            return json.dumps({filename: file_contents})
+        
+
+    except FileNotFoundError:
+        return json.dumps({'status': 'error'})
 
 
 def write_to_log(msg):
@@ -111,9 +133,9 @@ def parse_date(date_str):
     return datetime.strptime(date_str, '%Y-%m-%d')
 
 
-def backtest(strategy, data=0, symbol="",fromdate="", todate=0, cash=10000):
+def backtest(strategy, symbols="",fromdate="", todate=0, cash=10000):
 
-    alpaca_api = getApi()
+    # alpaca_api = getApi()
     load_dotenv()
     
     fromdate=parse_date(fromdate)
@@ -140,69 +162,44 @@ def backtest(strategy, data=0, symbol="",fromdate="", todate=0, cash=10000):
     class_name = str(strategy)
     strategy_class = getattr(module, class_name)
 
-
-    import logging
-    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
-
+    # Create an instance of the class
+    
     cerebro = bt.Cerebro()
-
-    # Setup Store
-    store = alpaca_backtrader_api.AlpacaStore(
-        key_id= getKey(),
-        secret_key=getSecret(),
-        paper= True
-    )
-    
-
-    if data:
-        data0 = alpaca_backtrader_api.AlpacaCSVData(dataname='./data/'+data+".csv")
-
-
-    DataFactory = store.getdata  
-    if symbol:    
-        data0 = DataFactory(dataname=symbol,
-                            historical=True,
-                            fromdate=fromdate,
-                            todate=todate,
-                            timeframe=bt.TimeFrame.Days,
-                            data_feed='iex')
-        print(data0)
-    
-        
-    broker = store.getbroker()
-
-    cerebro.setbroker(broker)
-    cerebro.adddata(data0)
-    
     cerebro.addstrategy(strategy_class)
-  
-    #add Analyzers
-    
 
-    
-    
-  
-    alpaca_api = getApi()
-    accinfo = alpaca_api.get_account()
-    initial_cash = float(accinfo.effective_buying_power)-float(accinfo.equity)
+    cerebro.broker.setcommission(commission=0.001)
 
+    datapath = 'FB.csv'
 
-    print('Starting Portfolio Value: {}'.format(cerebro.broker.getvalue()))
-    strats = cerebro.run()
+    data = []
 
-    cerebro.addanalyzer(bt.analyzers.Returns, _name='returns')
-    strat_return = strats[0].analyzers.getbyname("return").get_analysis()
+    # symbol = "GOOGL"
+    # symbol2 = "TSLA"
+
+    # data = bt.feeds.PandasData(dataname=yf.download(symbol, '2017-01-01', '2022-01-10'))
+    # data0 = bt.feeds.PandasData(dataname=yf.download(symbol2, '2017-01-01', '2022-01-10'))
+
+    for s in symbols:
+        data.append(bt.feeds.PandasData(dataname=yf.download(s, fromdate, todate)))
+
+    for d in data:
+        cerebro.adddata(d)
+
+    cerebro.broker.setcash(100000.0)
+
+    cerebro.addanalyzer(bt.analyzers.TimeReturn, _name="return")
+    print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
+    results = cerebro.run()
+    strat = results[0]
+
+    print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
+    strat_return = strat.analyzers.getbyname("return").get_analysis()
     strat_return = list(strat_return.items())
     idx, values = zip(*strat_return)
     strat_return = pd.Series(values, idx)
 
-    qs.reports.full(strat_return)
-
-
-    pnl = cerebro.broker.getvalue() - initial_cash
-    print('Final Portfolio Value: {}'.format(cerebro.broker.getvalue()))
-    
-    return pnl
+    output_name = strategy + ".html"
+    return qs.reports.full(strat_return)
     # return analyze(strats=strats)
 
 """
@@ -223,11 +220,11 @@ def live_trading():
 
 
 
-
+# backtest("pairs_trading",data=["GOOGL","TSLA"],fromdate="2020-09-21",todate="2020-10-21")
 
 if __name__=="__main__":
-    
-    res = backtest("SmaCross",data="GOOGL",fromdate="2020-09-21",todate="2020-10-21")
+    # 
+    # backtest("pairs_trading",symbols=["SPY","GOOGL"],fromdate="2021-09-21")
     print("****************************************************************")
-    print(res)
+    print(datetime.now())
     # print(get_file_names())
