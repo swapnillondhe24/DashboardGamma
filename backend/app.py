@@ -3,7 +3,7 @@ import re
 import os
 import json
 from datetime import datetime
-from flask import Flask, jsonify,send_file
+from flask import Flask,send_file,send_from_directory
 from flask_restful import Resource, Api
 from flask import request,Response
 from flask_cors import CORS
@@ -156,7 +156,7 @@ class runBacktesting(Resource):
     
     def runBacktesting(self,strategy,symbols,fromdate,todate,cash):
         backtest(strategy,symbols,fromdate,todate,cash)
-        return send_file('../quantstats-tearsheet.html')
+        return send_from_directory(directory='.',filename='quantstats-tearsheet.html')
     
     def post(self):
         try:

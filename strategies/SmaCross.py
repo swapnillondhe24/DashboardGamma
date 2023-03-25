@@ -9,8 +9,10 @@ import alpaca_trade_api as tradeapi
 import os
 from backend.helpers.utils import write_to_log
 
-
-
+ALPACA_KEY = ""
+ALPACA_SECRET = ""
+SYMBOL = ""
+STRATEGY = ""
 # def getApi():
 
 #     API_KEY_ID = os.getenv('API_KEY_ID')

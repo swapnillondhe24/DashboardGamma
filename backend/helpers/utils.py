@@ -34,7 +34,7 @@ def getSecret():
 
 def getBrokerInfo():
     load_dotenv()
-    return os.getenv('BROKER_API_KEY_ID'), os.getenv('BROKER_SECRET_ACCESS_KEY')
+    return os.getenv('CLIENT_API_KEY_ID'), os.getenv('CLIENT_SECRET_ACCESS_KEY')
 
 def saveBrokerInfo(key,secret):
     import json
@@ -98,7 +98,7 @@ import pandas as pd
 import json
 
 def Generatecode(filename,symbol):
-    filename = "../../strategies/"+filename
+    filename = "./strategies/"+filename
     k,s = getBrokerInfo()
     alpaca_key = "ALPACA_KEY = "+k
     alpaca_secret = "ALPACA_SECRET = "+s
@@ -110,12 +110,12 @@ def Generatecode(filename,symbol):
         with open(filename + ".py", 'r') as file:
             file_contents = file.read()
             # Replace specific parameters inside the file with new values
-            file_contents = file_contents.replace("ALPACA_KEY", alpaca_key)
-            file_contents = file_contents.replace("ALPACA_SECRET", alpaca_secret)
-            file_contents = file_contents.replace("SYMBOL", symbol)
-            file_contents = file_contents.replace("STRATEGY", strategy)
+            file_contents = file_contents.replace('ALPACA_KEY = ""', alpaca_key)
+            file_contents = file_contents.replace('ALPACA_SECRET = ""', alpaca_secret)
+            file_contents = file_contents.replace('SYMBOL = ""', symbol)
+            file_contents = file_contents.replace('STRATEGY = ""', strategy)
             # Return updated file contents as a JSON string
-            return json.dumps({filename: file_contents})
+            return json.dumps({"code": file_contents})
         
 
     except FileNotFoundError:
@@ -125,7 +125,7 @@ def Generatecode(filename,symbol):
 def write_to_log(msg):
     now = datetime.now()
     timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
-    with open("logfile.txt", "a") as f:
+    with open("logfile.json", "a+") as f:
         f.write(f"[{timestamp}] {msg}\n")
 
 
@@ -213,6 +213,7 @@ O/P
 
 
 """
+
 #TODO def live trading
 
 def live_trading():
@@ -225,6 +226,7 @@ def live_trading():
 if __name__=="__main__":
     # 
     # backtest("pairs_trading",symbols=["SPY","GOOGL"],fromdate="2021-09-21")
+    write_to_log(Generatecode("SmaCross", "AAPL"))
     print("****************************************************************")
     print(datetime.now())
     # print(get_file_names())
