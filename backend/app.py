@@ -23,6 +23,7 @@ cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['CORS_HEADERS'] = 'Content-Type'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 
 alpaca_api = getApi()
@@ -156,7 +157,9 @@ class runBacktesting(Resource):
     
     def runBacktesting(self,strategy,symbols,fromdate,todate,cash):
         backtest(strategy,symbols,fromdate,todate,cash)
-        return send_from_directory(directory='.',filename='quantstats-tearsheet.html')
+        # print("********************",res)
+        return None
+        # return json.dumps()
     
     def post(self):
         try:
@@ -169,7 +172,8 @@ class runBacktesting(Resource):
             if request_json['cash']:
                 cash = request_json['cash']
 
-            return Response(self.runBacktesting(strategy,symbols,fromdate,todate,cash))
+            self.runBacktesting(strategy,symbols,fromdate,todate,cash)
+            return send_file('../quantstats-tearsheet.html',download_name='quantstats-tearsheet.html')
 
         except Exception as error:
             print(error)

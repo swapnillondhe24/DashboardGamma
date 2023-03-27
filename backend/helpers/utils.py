@@ -9,6 +9,8 @@ import yfinance as yf
 import alpaca_backtrader_api
 import json
 import quantstats as qs
+import matplotlib
+matplotlib.use('Agg')
 # from strategies.SmaCross import SmaCross
 
 
@@ -199,7 +201,11 @@ def backtest(strategy, symbols="",fromdate="", todate=0, cash=10000):
     strat_return = pd.Series(values, idx)
 
     output_name = strategy + ".html"
-    return qs.reports.full(strat_return)
+    # ret = {
+        # "metrics": [qs.reports.metrics(strat_return)],
+    # }
+    return qs.reports.html(strat_return, output=output_name, title="Backtest Report")
+
     # return analyze(strats=strats)
 
 """
