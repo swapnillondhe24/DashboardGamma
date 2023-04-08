@@ -1,0 +1,7 @@
+order_id,symbol,qty,side,type,time_in_force,submitted_at,filled_at,filled_qty,filled_avg_price
+983e339e-e5e2-4437-beac-a89a70a13cde,AAPL,100,buy,market,gtc,2023-02-17 14:50:01.865084569+00:00,,0,
+6081d45b-e050-4261-a90d-95c9346720f2,AAPL,100,buy,market,gtc,2023-02-17 14:52:36.170883196+00:00,,0,
+e0f81f21-e0d8-40a4-95e7-5c40172b5370,AAPL,100,buy,market,gtc,2023-02-17 14:52:46.617685835+00:00,,0,
+8bab27e9-7a06-4615-8d7f-0fb8cf97dacf,AAPL,100,buy,market,gtc,2023-02-17 14:52:57.088371373+00:00,,0,
+4c862b0d-faac-41ea-b62d-230c38bff7f8,AAPL,100,sell,market,gtc,2023-02-17 14:53:55.059959645+00:00,,0,
+1f9ac1c5-f946-4413-be7c-71bf06daba02,AAPL,100,sell,market,gtc,2023-02-17 14:54:03.140223488+00:00,,0,

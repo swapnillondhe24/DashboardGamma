@@ -1,6 +1,10 @@
+import csv
 from datetime import datetime,timedelta
 import json
+from multiprocessing import Process
+import multiprocessing
 import os
+import subprocess
 import backtrader as bt
 import alpaca_trade_api as tradeapi
 from dotenv import load_dotenv
@@ -10,9 +14,16 @@ import alpaca_backtrader_api
 import json
 import quantstats as qs
 import matplotlib
+import pandas as pd
 matplotlib.use('Agg')
+
 # from strategies.SmaCross import SmaCross
 
+
+
+##############################################################################################
+###################     INDEX : API and CSV Related Functions     ############################
+##############################################################################################
 
 def getApi():
     load_dotenv()
@@ -32,6 +43,108 @@ def getKey():
 def getSecret():
     load_dotenv()
     return os.getenv('SECRET_ACCESS_KEY')
+
+
+def write_to_log(msg,strategy):
+    now = datetime.now()
+    timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+    with open("resources/"+strategy +"_logfile.txt", "a") as f:
+        f.write(f"[{timestamp}] {msg}\n")
+
+
+
+def get_latest_order(apil = getApi()):
+    positions = apil.get_activities(page_size=1)
+    return apil.get_order(positions[0].order_id)
+
+
+def write_order_to_csv(order, filename="/resources/orders.csv"):
+    headers = ['order_id', 'symbol', 'qty', 'side', 'type', 'time_in_force', 'submitted_at', 'filled_at', 'filled_qty', 'filled_avg_price']
+    
+
+    order = get_latest_order()
+
+    file_exists = os.path.isfile(filename)
+
+
+    
+    with open(filename, mode='w+', newline='') as order_file:
+        writer = csv.DictWriter(order_file, fieldnames=headers)
+        
+        if not file_exists:
+            writer.writeheader()
+            
+        try:
+            writer.writerow({
+            'order_id': order['id'],
+            'symbol': order['symbol'],
+            'qty': order['qty'],
+            'side': order['side'],
+            'type': order['type'],
+            'time_in_force': order['time_in_force'],
+            'submitted_at': str(order['submitted_at']),
+            'filled_at': str(order['filled_at']) if order['filled_at'] else '',
+            'filled_qty': order['filled_qty'] if order['filled_qty'] else 0,
+            'filled_avg_price': order['filled_avg_price']
+            })
+        except:
+            writer.writerow({
+            'order_id': order.id,
+            'symbol': order.symbol,
+            'qty': order.qty,
+            'side': order.side,
+            'type': order.type,
+            'time_in_force': order.time_in_force,
+            'submitted_at': str(order.submitted_at),
+            'filled_at': str(order.filled_at) if order.filled_at else '',
+            'filled_qty': order.filled_qty if order.filled_qty else 0,
+            'filled_avg_price': order.filled_avg_price
+            })
+        
+        order_file.close()
+        
+    write_order_details_to_json(filename)
+
+
+def write_order_details_to_json(filepath):
+    api = getApi()
+    order_details = []
+    with open(filepath, 'r') as file:
+        csv_reader = csv.reader(file)
+        next(csv_reader)  # skip header row
+        for row in csv_reader:
+            order_id = row[0]
+            order = api.get_order(order_id)
+            order_dict = {
+                'order ID': order.id,
+                'Symbol': order.symbol,
+                'Qty': order.qty,
+                'filled_qty': order.filled_qty,
+                'Type': order.side,
+                'side': order.side,
+                'time_in_force': order.time_in_force,
+                'Status': order.status,
+                'Price': order.filled_avg_price,
+                'Time': order.created_at.isoformat(),
+                'updated_at': order.updated_at.isoformat()
+            }
+            order_details.append(order_dict)
+            
+    transactions = {"transaction": order_details}
+    
+    
+            
+    with open('resources/transaction.json', 'a+') as outfile:
+        json.dump(transactions, outfile)
+
+
+
+
+
+
+##############################################################################################
+###################     INDEX : Client Broker information storing     ########################
+##############################################################################################
 
 
 def getBrokerInfo():
@@ -59,15 +172,23 @@ def saveBrokerInfo(key,secret):
         return json.dumps({'status': 'error'})
 
 
+
+
+
+##############################################################################################
+###################     INDEX : Downloading Data to .csv API endpoint function     ###########
+##############################################################################################
+
+
 def datadownload(symbols,start_date,end_date,timeframe="1D"):
     
     try:    
-        if not os.path.exists('../data'):
-            os.makedirs('../data')
+        if not os.path.exists('data'):
+            os.makedirs('data')
 
         for symbol in symbols:
             data = yf.download(symbol, start=start_date, end=end_date,interval=timeframe)
-            data.to_csv(f'../data/{symbol}.csv')
+            data.to_csv(f'data/{symbol}.csv')
         
         return json.dumps({'status': 'success',"filedir":"../data/"})
     
@@ -76,7 +197,20 @@ def datadownload(symbols,start_date,end_date,timeframe="1D"):
 
 
 
-def get_file_names(directory_path="../strategies"):
+#  instead of downloading return it as a dataframe
+
+def getData(symbol,start_date,end_date="datetime.now().strftime('%Y-%m-%d')",timeframe="1D"):
+    data = yf.download(symbol, start=start_date, end=end_date,interval=timeframe)
+    return data
+
+
+
+##############################################################################################
+###################  INDEX : Return Files names present in stratigies folder     #############
+##############################################################################################
+
+
+def get_file_names(directory_path="strategies"):
     if not os.path.exists(directory_path):
         os.makedirs(directory_path)
         return []
@@ -86,21 +220,18 @@ def get_file_names(directory_path="../strategies"):
         return ret_lst
 
 
-def getData(symbol,start_date,end_date="datetime.now().strftime('%Y-%m-%d')",timeframe="1D"):
-    data = yf.download(symbol, start=start_date, end=end_date,interval=timeframe)
-    return data
-
-import pandas as pd
 
 
 
-#TODO def getdata from file and display code
 
+##############################################################################################
+###################  INDEX : Generate Code Function      #####################################
+##############################################################################################
 
 import json
 
 def Generatecode(filename,symbol):
-    filename = "./strategies/"+filename
+    filename = "./templates/"+filename
     k,s = getBrokerInfo()
     alpaca_key = "ALPACA_KEY = "+k
     alpaca_secret = "ALPACA_SECRET = "+s
@@ -124,12 +255,11 @@ def Generatecode(filename,symbol):
         return json.dumps({'status': 'error'})
 
 
-def write_to_log(msg):
-    now = datetime.now()
-    timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
-    with open("logfile.json", "a+") as f:
-        f.write(f"[{timestamp}] {msg}\n")
 
+
+##############################################################################################
+###################  INDEX : Backtesting and Related Functions      ##########################
+##############################################################################################
 
 def parse_date(date_str):
     return datetime.strptime(date_str, '%Y-%m-%d')
@@ -143,7 +273,7 @@ def backtest(strategy, symbols="",fromdate="", todate=0, cash=10000):
     fromdate=parse_date(fromdate)
     
 
-    if not todate:
+    if  todate == 0:
         todate = datetime.now() - timedelta(minutes=20)
     else:
         todate = parse_date(todate)
@@ -171,7 +301,7 @@ def backtest(strategy, symbols="",fromdate="", todate=0, cash=10000):
 
     cerebro.broker.setcommission(commission=0.001)
 
-    datapath = 'FB.csv'
+    # datapath = 'FB.csv'
 
     data = []
 
@@ -201,38 +331,129 @@ def backtest(strategy, symbols="",fromdate="", todate=0, cash=10000):
     strat_return = pd.Series(values, idx)
 
     output_name = strategy + ".html"
-    # ret = {
-        # "metrics": [qs.reports.metrics(strat_return)],
-    # }
     return qs.reports.html(strat_return, output=output_name, title="Backtest Report")
 
-    # return analyze(strats=strats)
 
-"""
-example usage
-    res = backtest("SmaCross",symbol="GOOG",fromdate=datetime(2020,7,1))
-    print("****************************************************************")
-    print(res)
+##############################################################################################
+###################  INDEX : Live Trading and Related Functions    ###########################
+##############################################################################################
 
-O/P
-    46363.75 (profit made by strategy)
+# Global Variables
+backend_process = None
+trading_process = None
+
+def start_backend():
+
+    print("Starting Backend")
+    try:
+        subprocess.run("python live_trading.py",cwd="backend/live_trading",shell=True)
+    except ImportError:
+        subprocess.run("python live_trading.py",cwd="backend/live_trading",shell=True)
+    except KeyboardInterrupt:
+        exit(0)
+
+ALPACA_API_KEY = getKey()
+ALPACA_SECRET_KEY = getSecret()
+ALPACA_PAPER = True  # set to False for live trading
+TIMEFRAME = bt.TimeFrame.Ticks
+
+def get_alpaca_data(symbol, timeframe):
+    
+    alpaca_api = alpaca_backtrader_api.AlpacaStore(
+        key_id=ALPACA_API_KEY,
+        secret_key=ALPACA_SECRET_KEY,
+        paper=ALPACA_PAPER,
+        usePolygon=False
+    )
+
+    alpaca_data = alpaca_backtrader_api.AlpacaData(
+        dataname=symbol,
+        timeframe=timeframe,
+        store=alpaca_api,
+        fromdate=datetime(2022, 1, 1),
+        todate=datetime.now(),
+        historical=True,
+        qcheck=0.5,
+        backfill_start=True,
+        backfill=True
+    )
+
+    return alpaca_data
+
+# define function to run live trading
+def run_live_trading(strategy_function, symbol):
+    cerebro = bt.Cerebro()
+
+    # add strategy
+    strategy = strategy_function()
+    cerebro.addstrategy(strategy)
+
+    # add data
+    alpaca_data = get_alpaca_data(symbol, TIMEFRAME)
+    cerebro.adddata(alpaca_data)
+
+    # set broker
+    cerebro.broker = alpaca_backtrader_api.AlpacaBroker(
+        key_id=ALPACA_API_KEY,
+        secret_key=ALPACA_SECRET_KEY,
+        paper=ALPACA_PAPER
+    )
+
+    # set commission
+    cerebro.broker.setcommission(
+        commission=0.0,
+        margin=1.0,
+        mult=1.0,
+        name=None
+    )
+
+    # run live trading
+    cerebro.run()
 
 
-"""
-
-#TODO def live trading
-
-def live_trading():
-    pass
 
 
 
-# backtest("pairs_trading",data=["GOOGL","TSLA"],fromdate="2020-09-21",todate="2020-10-21")
+
+
+def live_trading(run_func,symbol):
+    global backend_process
+    global trading_process
+    multiprocessing.set_start_method("fork")
+
+    try:
+        backend_process = Process(target=start_backend)
+
+        trading_process = Process(target=run_live_trading,args=(run_func ,symbol))
+
+        trading_process.start()
+        backend_process.start()
+
+        trading_process.join()
+        backend_process.join()
+
+    except KeyboardInterrupt:
+        backend_process.terminate()
+        trading_process.terminate()
+
+
+def stop_trading():
+    global backend_process
+    global trading_process
+
+    if backend_process is not None:
+        backend_process.terminate()
+    if trading_process is not None:
+        trading_process.terminate()
+
+
 
 if __name__=="__main__":
     # 
     # backtest("pairs_trading",symbols=["SPY","GOOGL"],fromdate="2021-09-21")
-    write_to_log(Generatecode("SmaCross", "AAPL"))
+    # write_to_log(Generatecode("SmaCross", "AAPL"))
+    live_trading("SmaCross","AAPL")
     print("****************************************************************")
     print(datetime.now())
     # print(get_file_names())
+# backtest("pairs_trading",data=["GOOGL","TSLA"],fromdate="2020-09-21",todate="2020-10-21")

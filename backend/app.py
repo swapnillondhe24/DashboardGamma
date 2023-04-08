@@ -10,7 +10,7 @@ from flask_cors import CORS
 try:
     from backend.helpers.utils import saveBrokerInfo as sbi
     from backend.helpers.utils import datadownload,get_file_names, backtest
-    from backend.helpers.utils import getApi
+    from backend.helpers.utils import getApi,Generatecode,live_trading,stop_trading
 except:
     from helpers.utils import saveBrokerInfo as sbi
     from helpers.utils import datadownload,get_file_names, backtest
@@ -49,15 +49,13 @@ class listExchanges(Resource):
             print(error)
 
 
+
 class listAssets(Resource):
     def listAssets(self,exchange):
         # return alpaca_api.list_assets()
         active_assets = alpaca_api.list_assets(status='active')
         names = {a.symbol for a in active_assets if a.exchange == exchange}
         # print(active_assets)
-        
-
-
         return json.dumps({"assets":list(names)}, indent=4)
 
     
@@ -183,16 +181,29 @@ class runBacktesting(Resource):
 class runLiveTrading(Resource):
     
     def runLiveTrading(self,strategy,symbol):
-        backtest(strategy,symbol)
+        live_trading(strategy,symbol)
     
     def post(self):
         try:
             request_json = request.get_json()
             strategy = request_json['strategy']
-            data = request_json['data']
             symbol = request_json['symbol']
 
-            return Response(self.runBacktesting(strategy,symbol))
+            return Response(self.runLiveTrading(strategy,symbol))
+
+        except Exception as error:
+            print(error)
+
+
+class stopTrading(Resource):
+    
+    def stopTrading(self):
+        stop_trading()
+    
+    def post(self):
+        try:
+            self.stopTrading()
+            return Response(json.dumps({"status":"Trading Stopped"}))
 
         except Exception as error:
             print(error)
@@ -224,11 +235,15 @@ api.add_resource(listAssets, '/listassets/')
 api.add_resource(getAssets, '/getassets/')
 
 api.add_resource(saveBrokerInfo, '/savebrokerinfo/')
+
 api.add_resource(DownloadData, '/downloaddata/')
 api.add_resource(getNames, '/getnames/')
 api.add_resource(GenrateCode, '/generatecode/')
+
 api.add_resource(runBacktesting, '/runbacktesting/')
 api.add_resource(runLiveTrading, '/runlivetrading/')
+
+api.add_resource(stopTrading, '/stoptrading/')
 
 
 if __name__ == '__main__':
