@@ -59,7 +59,8 @@ class SmaCross1(baseStrategy):
         self.crossover0 = bt.ind.CrossOver(sma1, sma2)
 
     def next(self):
-        self.buy()
+        print("been here")
+        self.buy(size=2)
         if not self.live_bars and not IS_BACKTEST:
             # only run code if we have live bars (today's bars).
             # ignore if we are backtesting
@@ -105,13 +106,13 @@ if __name__ == '__main__':
         # or just alpaca_backtrader_api.AlpacaBroker()
         broker = store.getbroker()
         cerebro.setbroker(broker)
-    cerebro.adddata(data0)
+    cerebro.adddata(data0,name=symbol)
 
     if IS_BACKTEST:
         # backtrader broker set initial simulated cash
         cerebro.broker.setcash(100000.0)
 
     print('Starting Portfolio Value: {}'.format(cerebro.broker.getvalue()))
-    cerebro.run()
+    cerebro.run( live=True)
     print('Final Portfolio Value: {}'.format(cerebro.broker.getvalue()))
     # cerebro.plot()

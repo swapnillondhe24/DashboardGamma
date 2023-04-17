@@ -1,5 +1,6 @@
 import csv
 from datetime import datetime,timedelta
+import importlib
 import json
 from multiprocessing import Process
 import multiprocessing
@@ -237,7 +238,7 @@ def Generatecode(filename,symbol):
     alpaca_secret = "ALPACA_SECRET = "+s
     symbol = "SYMBOL = "+symbol
     strategy = "STRATEGY = "+filename
-    print("been here")
+    # print("been here")
 
     try:
         with open(filename + ".py", 'r') as file:
@@ -363,7 +364,6 @@ def get_alpaca_data(symbol, timeframe):
         key_id=ALPACA_API_KEY,
         secret_key=ALPACA_SECRET_KEY,
         paper=ALPACA_PAPER,
-        usePolygon=False
     )
 
     alpaca_data = alpaca_backtrader_api.AlpacaData(
@@ -382,11 +382,23 @@ def get_alpaca_data(symbol, timeframe):
 
 # define function to run live trading
 def run_live_trading(strategy_function, symbol):
+    
+    # The module name is two levels up
+    module_name = "strategies."+str(strategy_function)
+
+    # Get the module object dynamically
+    module = importlib.import_module(module_name, package=__package__)
+
+    # Get the class object by name
+    class_name = str(strategy_function)
+    strategy_class = getattr(module, class_name)
+
+    
+    
     cerebro = bt.Cerebro()
 
-    # add strategy
-    strategy = strategy_function()
-    cerebro.addstrategy(strategy)
+
+    cerebro.addstrategy(strategy_class)
 
     # add data
     alpaca_data = get_alpaca_data(symbol, TIMEFRAME)
@@ -419,7 +431,7 @@ def run_live_trading(strategy_function, symbol):
 def live_trading(run_func,symbol):
     global backend_process
     global trading_process
-    multiprocessing.set_start_method("fork")
+    multiprocessing.set_start_method("spawn")
 
     try:
         backend_process = Process(target=start_backend)
@@ -449,6 +461,10 @@ def stop_trading():
 
 
 if __name__=="__main__":
+
+
+    print(__package__)
+
     # 
     # backtest("pairs_trading",symbols=["SPY","GOOGL"],fromdate="2021-09-21")
     # write_to_log(Generatecode("SmaCross", "AAPL"))

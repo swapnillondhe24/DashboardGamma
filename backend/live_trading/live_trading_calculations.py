@@ -1,8 +1,16 @@
+from dotenv import load_dotenv
+import alpaca_trade_api as tradeapi
+import os
 
-try:
-    from backend.helpers.utils import getApi,Generatecode
-except:
-    from helpers.utils import getApi,Generatecode
+def getApi():
+    load_dotenv()
+
+    API_KEY_ID = os.getenv('API_KEY_ID')
+    SECRET_ACCESS_KEY = os.getenv('SECRET_ACCESS_KEY')
+    
+    api = tradeapi.REST(API_KEY_ID, SECRET_ACCESS_KEY, base_url='https://paper-api.alpaca.markets' ,api_version='v2')
+    
+    return api
 
 import json
 import pandas as pd

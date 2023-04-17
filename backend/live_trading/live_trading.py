@@ -1,8 +1,8 @@
 
 try:
-    from live_trading.live_trading_calculations import get_all_positions, unrealised_profit_df_strategy, realized_profit_df_strategy, get_pnl_df_strategy, get_all_positions
+    from live_trading_calculations import get_all_positions, unrealised_profit_df_strategy, realized_profit_df_strategy, get_pnl_df_strategy, get_all_positions
 except:
-    from backend.live_trading.live_trading_calculations import get_all_positions, unrealised_profit_df_strategy, realized_profit_df_strategy, get_pnl_df_strategy, get_all_positions
+    from DashboardGamma.backend.live_trading.live_trading_calculations import get_all_positions, unrealised_profit_df_strategy, realized_profit_df_strategy, get_pnl_df_strategy, get_all_positions
 
 
 
