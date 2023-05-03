@@ -1,13 +1,14 @@
 import backtrader as bt
 import alpaca_backtrader_api
 import pandas as pd
+# from BaseStrategy import BaseStrategy
 
 from backend.helpers.utils import getKey, getSecret, getApi
 
 class Buy_N_Hold(bt.Strategy):
     
     params = dict(
-        symbol = 'MSFT'
+        symbol = 'AME'
     )
     
     def __init__(self):
@@ -15,15 +16,16 @@ class Buy_N_Hold(bt.Strategy):
         self.order = None
     
     def next(self):
-        print("in next")
-        print(self.order)
-        print(self.position)
-        # self.buy(size=1)
+        print("into next method")
+        self.order = self.buy(size=2)
+
         if self.order:
             return
         
         if self.position:
             self.order = self.buy(size=2)
+        
+        print(self.order)
     
     def notify_order(self, order):
         if order.status in [order.Completed, order.Cancelled, order.Rejected]:
@@ -42,7 +44,7 @@ if __name__ == "__main__":
         )
     api = getApi()
 
-    symbol = 'MSFT'
+    symbol = 'AME'
     timeframe = bt.TimeFrame.Ticks
     last_trade = api.get_latest_trade(symbol)
     print(last_trade)
